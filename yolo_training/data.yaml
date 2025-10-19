@@ -1,0 +1,13 @@
+# YOLO dataset configuration (paths are relative to THIS file location)
+
+train: ../dataset/images/train
+val:   ../dataset/images/val
+test:  ../dataset/images/test  # optional
+
+# Number of classes
+nc: 2
+
+# Class names (order must match your labeling tool)
+names:
+  0: dumbbell
+  1: barbell
