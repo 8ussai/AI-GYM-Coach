@@ -27,7 +27,7 @@ def parse_args():
         help="Path to data.yaml describing train/val sets and nc/names"
     )
     parser.add_argument(
-        "--model", type=str, default="yolov8n.pt",
+        "--model", type=str, default="yolov8s.pt",
         help="Base model weights (.pt) to start from"
     )
     parser.add_argument(
@@ -35,7 +35,7 @@ def parse_args():
         help="YOLO task type (detection or segmentation)"
     )
     parser.add_argument(
-        "--epochs", type=int, default=80, help="Number of training epochs"
+        "--epochs", type=int, default=250, help="Number of training epochs"
     )
     parser.add_argument(
         "--imgsz", type=int, default=640, help="Training image size"
