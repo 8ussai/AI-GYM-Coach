@@ -6,7 +6,8 @@ BASE_DIR = Path(__file__).resolve().parents[2]
 # إعداد YOLO
 YOLO_DIR = BASE_DIR / "yolo_training"
 YOLO_WEIGHTS = YOLO_DIR / "runs" / "train" / "train" / "weights" / "best.pt"        # أو أي وزن جاهز عندك
-YOLO_BAR_CLASS_ID = 0  # default is 1 for barbell_on_shoulder
+YOLO_DUMBELL_CLASS_ID = 0  # default is 1 for barbell_on_shoulder
+YOLO_BARBELL_CLASS_ID = 1  # default is 1 for barbell_on_shoulder
 
 
 # ثقة الكشف الافتراضية (YOLO)

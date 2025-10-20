@@ -1,17 +1,4 @@
 #!/usr/bin/env python3
-"""
-Clean raw per-frame CSV into a stable, smoothed frames.csv for a given exercise.
-
-Reads:
-  outputs/raw/<exercise>_frames.csv
-
-Writes:
-  outputs/cleaned/<exercise>/frames.csv
-
-Typical use:
-  python -m modules.data_processing.clean_data --exercise squat --verbose
-"""
-
 import argparse
 from pathlib import Path
 import numpy as np
@@ -21,14 +8,10 @@ from modules.common.paths import get_raw_csv, get_cleaned_frames
 from modules.common.io_utils import read_csv, write_csv
 from modules.common.smoothing import smooth_dataframe
 
-# Base columns present in raw CSV
 BASE_COLS = ["video_name", "frame_idx", "t_s", "rep_id"]
 
-# Squat feature columns (must match feature_builder + extractor order)
 SQUAT_FEATURES = [
     "sq_knee_angle_L","sq_knee_angle_R",
-    "sq_hip_angle_L","sq_hip_angle_R",
-    "sq_ankle_angle_L","sq_ankle_angle_R",
     "sq_torso_incline","sq_pelvis_drop","sq_stance_ratio",
     "sq_elbow_angle_L","sq_elbow_angle_R",
     "sq_bar_present",
@@ -47,7 +30,6 @@ def parse_args():
     p.add_argument("--ema-alpha", type=float, default=0.2, help="EMA alpha when --smooth=ema")
     p.add_argument("--mean-window", type=int, default=5, help="Window when --smooth=mean")
     p.add_argument("--verbose", action="store_true", help="Print progress info")
-    p.add_argument("--overwrite", action="store_true", help="Overwrite cleaned frames.csv instead of replacing")
     return p.parse_args()
 
 def expected_features(exercise: str):
@@ -61,7 +43,6 @@ def validate_and_reorder(df: pd.DataFrame, exercise: str) -> pd.DataFrame:
     missing = [c for c in cols_needed if c not in df.columns]
     if missing:
         raise ValueError(f"Missing columns in raw CSV: {missing}")
-    # Keep exact order; ignore any extra columns silently
     return df[cols_needed].copy()
 
 def clip_physiologic_ranges(df: pd.DataFrame, exercise: str) -> pd.DataFrame:
@@ -70,8 +51,6 @@ def clip_physiologic_ranges(df: pd.DataFrame, exercise: str) -> pd.DataFrame:
         # Angles in degrees
         angle_cols = [
             "sq_knee_angle_L","sq_knee_angle_R",
-            "sq_hip_angle_L","sq_hip_angle_R",
-            "sq_ankle_angle_L","sq_ankle_angle_R",
             "sq_elbow_angle_L","sq_elbow_angle_R",
         ]
         for c in angle_cols:
@@ -95,8 +74,6 @@ def smooth_signals(df: pd.DataFrame, exercise: str, method: str, ema_alpha: floa
     if exercise == "squat":
         smooth_cols = [
             "sq_knee_angle_L","sq_knee_angle_R",
-            "sq_hip_angle_L","sq_hip_angle_R",
-            "sq_ankle_angle_L","sq_ankle_angle_R",
             "sq_torso_incline",
             "sq_pelvis_drop","sq_stance_ratio",
             "sq_elbow_angle_L","sq_elbow_angle_R",
@@ -127,29 +104,20 @@ def main():
 
     df = read_csv(raw_csv)
 
-    # Filter by pose confidence
     before = len(df)
     df = df[df["pose_confidence"] >= args.min_pose_conf].copy()
     if args.verbose:
         print(f"[INFO] Dropped {before - len(df)} frame(s) by pose_confidence < {args.min_pose_conf}")
 
-    # Ensure schema and order
     df = validate_and_reorder(df, exercise)
 
-    # Clip ranges
     if args.clip_angles:
         df = clip_physiologic_ranges(df, exercise)
 
-    # Sort to ensure time order per video
     df = df.sort_values(by=["video_name", "t_s", "frame_idx"]).reset_index(drop=True)
-
-    # Smooth signals
     df = smooth_signals(df, exercise, args.smooth, args.ema_alpha, args.mean_window)
 
-    # Rep_id stays as-is (empty) for now; derive_reps will fill
-    # Save
-    mode = "w"  # always write fresh cleaned file
-    write_csv(df, out_csv, mode=mode, header=True)
+    write_csv(df, out_csv, mode="w", header=True)
     print(f"[SUCCESS] Cleaned frames written: {out_csv} (rows={len(df)})")
 
 if __name__ == "__main__":

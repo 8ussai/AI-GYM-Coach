@@ -30,8 +30,6 @@ from .yolo_runner import YoloRunner
 # Canonical feature ordering for squat (must align with feature_builder output names)
 SQUAT_FEATURES: List[str] = [
     "sq_knee_angle_L", "sq_knee_angle_R",
-    "sq_hip_angle_L",  "sq_hip_angle_R",
-    "sq_ankle_angle_L","sq_ankle_angle_R",
     "sq_torso_incline","sq_pelvis_drop","sq_stance_ratio",
     "sq_elbow_angle_L","sq_elbow_angle_R",
     "sq_bar_present",
