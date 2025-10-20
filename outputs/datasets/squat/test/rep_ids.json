@@ -1,0 +1,478 @@
+[
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r1",
+    "start_time_s": 0.0,
+    "end_time_s": 2.068942731,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r10",
+    "start_time_s": 21.35682819,
+    "end_time_s": 23.0253304,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r11",
+    "start_time_s": 23.82621145,
+    "end_time_s": 25.49471366,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r12",
+    "start_time_s": 26.29559471,
+    "end_time_s": 27.96409692,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r2",
+    "start_time_s": 2.46938326,
+    "end_time_s": 4.338105727,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r3",
+    "start_time_s": 4.738546256,
+    "end_time_s": 6.540528634,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r4",
+    "start_time_s": 7.074449339,
+    "end_time_s": 8.742951542,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r5",
+    "start_time_s": 9.343612335,
+    "end_time_s": 11.14559471,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r6",
+    "start_time_s": 11.67951542,
+    "end_time_s": 13.41475771,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r7",
+    "start_time_s": 14.14889868,
+    "end_time_s": 15.81740088,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r8",
+    "start_time_s": 16.48480176,
+    "end_time_s": 18.22004405,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat1.MOV",
+    "rep_id": "r9",
+    "start_time_s": 18.88744493,
+    "end_time_s": 20.62268722,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r1",
+    "start_time_s": 0.200156495,
+    "end_time_s": 1.000782473,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r10",
+    "start_time_s": 23.95206051,
+    "end_time_s": 25.28643714,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r11",
+    "start_time_s": 26.75425143,
+    "end_time_s": 28.22206573,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r12",
+    "start_time_s": 29.35628586,
+    "end_time_s": 30.62394366,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r13",
+    "start_time_s": 31.82488263,
+    "end_time_s": 33.29269692,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r14",
+    "start_time_s": 34.56035472,
+    "end_time_s": 35.96145018,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r15",
+    "start_time_s": 37.16238915,
+    "end_time_s": 38.49676578,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r16",
+    "start_time_s": 39.69770475,
+    "end_time_s": 41.03208138,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r2",
+    "start_time_s": 2.335159103,
+    "end_time_s": 4.00312989,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r3",
+    "start_time_s": 5.070631195,
+    "end_time_s": 6.605164319,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r4",
+    "start_time_s": 7.806103286,
+    "end_time_s": 9.340636411,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r5",
+    "start_time_s": 10.34141888,
+    "end_time_s": 11.87595201,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r6",
+    "start_time_s": 12.87673448,
+    "end_time_s": 14.41126761,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r7",
+    "start_time_s": 15.54548774,
+    "end_time_s": 17.01330203,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r8",
+    "start_time_s": 18.4143975,
+    "end_time_s": 19.88221179,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat10.MOV",
+    "rep_id": "r9",
+    "start_time_s": 21.14986959,
+    "end_time_s": 22.61768388,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat11.MOV",
+    "rep_id": "r1",
+    "start_time_s": 36.22086455,
+    "end_time_s": 37.95519693,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat11.MOV",
+    "rep_id": "r2",
+    "start_time_s": 42.7579635,
+    "end_time_s": 44.2254755,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat11.MOV",
+    "rep_id": "r3",
+    "start_time_s": 45.7596926,
+    "end_time_s": 46.82697406,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat11.MOV",
+    "rep_id": "r4",
+    "start_time_s": 50.16222863,
+    "end_time_s": 54.49805956,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r1",
+    "start_time_s": 0.734321653,
+    "end_time_s": 2.336477987,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r10",
+    "start_time_s": 22.16316262,
+    "end_time_s": 23.89883199,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r11",
+    "start_time_s": 24.69991015,
+    "end_time_s": 26.50233603,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r12",
+    "start_time_s": 27.3034142,
+    "end_time_s": 29.17259659,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r13",
+    "start_time_s": 29.97367475,
+    "end_time_s": 31.84285714,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r14",
+    "start_time_s": 32.64393531,
+    "end_time_s": 34.57987421,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r2",
+    "start_time_s": 3.137556155,
+    "end_time_s": 4.739712489,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r3",
+    "start_time_s": 5.340521114,
+    "end_time_s": 6.942677448,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r4",
+    "start_time_s": 7.543486074,
+    "end_time_s": 9.279155436,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r5",
+    "start_time_s": 10.14699012,
+    "end_time_s": 11.81590296,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r6",
+    "start_time_s": 12.4834681,
+    "end_time_s": 14.15238095,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r7",
+    "start_time_s": 14.75318958,
+    "end_time_s": 16.42210243,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r8",
+    "start_time_s": 17.22318059,
+    "end_time_s": 18.95884996,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat12.MOV",
+    "rep_id": "r9",
+    "start_time_s": 19.62641509,
+    "end_time_s": 21.49559748,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r1",
+    "start_time_s": 0.069664795,
+    "end_time_s": 0.975307129,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r10",
+    "start_time_s": 20.7601089,
+    "end_time_s": 22.22306959,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r11",
+    "start_time_s": 22.98938234,
+    "end_time_s": 24.59167262,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r12",
+    "start_time_s": 25.42765016,
+    "end_time_s": 26.96027565,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r13",
+    "start_time_s": 28.9805547,
+    "end_time_s": 30.51318019,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r14",
+    "start_time_s": 31.62781691,
+    "end_time_s": 33.2301072,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r2",
+    "start_time_s": 1.671955079,
+    "end_time_s": 3.204580568,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r3",
+    "start_time_s": 3.901228518,
+    "end_time_s": 5.364189212,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r4",
+    "start_time_s": 6.130501957,
+    "end_time_s": 7.732792241,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r5",
+    "start_time_s": 8.499104986,
+    "end_time_s": 10.10139527,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r6",
+    "start_time_s": 10.86770801,
+    "end_time_s": 12.4699983,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r7",
+    "start_time_s": 13.23631104,
+    "end_time_s": 14.90826612,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r8",
+    "start_time_s": 15.74424366,
+    "end_time_s": 17.34653395,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat13.MOV",
+    "rep_id": "r9",
+    "start_time_s": 18.39150587,
+    "end_time_s": 19.92413136,
+    "label": "Incorrect"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r1",
+    "start_time_s": 0.266997724,
+    "end_time_s": 1.935733499,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r2",
+    "start_time_s": 3.537719843,
+    "end_time_s": 5.273205049,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r3",
+    "start_time_s": 6.541444238,
+    "end_time_s": 8.276929443,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r4",
+    "start_time_s": 9.878915787,
+    "end_time_s": 11.61440099,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r5",
+    "start_time_s": 13.14963791,
+    "end_time_s": 14.88512311,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r6",
+    "start_time_s": 16.62060832,
+    "end_time_s": 18.22259466,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r7",
+    "start_time_s": 20.09157873,
+    "end_time_s": 21.62681564,
+    "label": "Correct"
+  },
+  {
+    "video_name": "squat14.MOV",
+    "rep_id": "r8",
+    "start_time_s": 23.42905028,
+    "end_time_s": 25.03103662,
+    "label": "Correct"
+  }
+]

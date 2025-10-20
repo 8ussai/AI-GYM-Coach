@@ -26,3 +26,15 @@ def get_model_path(exercise: str):
 
 def get_model_meta(exercise: str):
     return MODELS_DIR / f"{exercise}_meta.json"
+
+def get_dataset_dir(exercise: str) -> Path:
+    """Return path to dataset directory for this exercise (used in model_training)."""
+    p = OUTPUTS_DIR / "datasets" / exercise
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+def get_models_dir(exercise: str) -> Path:
+    """Return path to models directory for this exercise (for weights/meta)."""
+    p = OUTPUTS_DIR / "models" / exercise
+    p.mkdir(parents=True, exist_ok=True)
+    return p
