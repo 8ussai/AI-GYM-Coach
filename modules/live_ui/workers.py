@@ -1,207 +1,388 @@
 #!/usr/bin/env python3
 # modules/live_ui/workers.py
+"""
+Background workers for video capture and pose analysis.
+"""
 
 import time
-from typing import Optional, Union, List
-from pathlib import Path
-
+from typing import Optional, Dict, Any, Union
 import cv2
 import numpy as np
-from PySide6.QtCore import QThread, Signal, QObject
+from PySide6.QtCore import QThread, Signal
 
-from modules.live_analyzer.feature_extractor import FeatureExtractor, YOLOConfig
-from modules.live_analyzer.fsm import SquatFSM, SquatThresholds, SIG_COL
-from modules.live_analyzer.inference import LiveInference
+from modules.live_analyzer.inference import GRUInference
 from modules.live_analyzer.tts import speak
-from modules.common.paths import get_models_dir
+from modules.data_extraction.mediapipe_runner import PoseRunner
+from modules.data_extraction.yolo_runner import YoloRunner
+from modules.common.feature_builder import build_features
+
 
 class VideoWorker(QThread):
+    """Worker thread for video capture (camera or file)."""
+    
     frame_ready = Signal(np.ndarray)
     stats_ready = Signal(dict)
     error = Signal(str)
-
-    def __init__(self, source: Union[int, str], target_fps: float = 30.0, flip: bool = True):
+    
+    def __init__(self, source: Union[int, str], target_fps: float = 30.0, flip: bool = False):
         super().__init__()
         self.source = source
-        self.target_fps = float(target_fps)
-        self.flip = bool(flip)
+        self.target_fps = target_fps
+        self.flip = flip
         self._running = False
-        self._cap = None
-
+        self.cap = None
+        
     def stop(self):
+        """Stop the video capture."""
         self._running = False
-
-    def open_source(self) -> bool:
-        if isinstance(self.source, int):
-            self._cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
-        else:
-            self._cap = cv2.VideoCapture(self.source)
-        if not self._cap or not self._cap.isOpened():
-            self.error.emit(f"Failed to open source: {self.source}")
-            return False
-        return True
-
+    
     def run(self):
+        """Main capture loop."""
         self._running = True
-        if not self.open_source():
+        
+        # Open video source
+        if isinstance(self.source, int):
+            self.cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
+        else:
+            self.cap = cv2.VideoCapture(str(self.source))
+        
+        if not self.cap.isOpened():
+            self.error.emit(f"فشل فتح المصدر: {self.source}")
             return
-        interval = 1.0 / max(1.0, self.target_fps)
-        frames = 0
-        t0 = time.time()
-
+        
+        # Set resolution if camera
+        if isinstance(self.source, int):
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+        
+        frame_time = 1.0 / self.target_fps
+        last_emit_time = 0
+        frame_count = 0
+        fps_start = time.time()
+        
         while self._running:
-            ok, frame = self._cap.read()
-            if not ok:
-                self.error.emit("Stream ended")
-                break
+            ret, frame = self.cap.read()
+            if not ret:
+                # End of video or camera disconnected
+                if isinstance(self.source, str):
+                    # Video file ended, could loop or stop
+                    break
+                else:
+                    self.error.emit("فقدان الاتصال بالكاميرا")
+                    break
+            
+            # Flip if needed
             if self.flip:
                 frame = cv2.flip(frame, 1)
-
-            self.frame_ready.emit(frame)
-            frames += 1
-            dt = time.time() - t0
-            fps = frames / dt if dt > 0 else 0.0
-            self.stats_ready.emit({"fps": fps})
-
-            # frame pacing
-            time.sleep(max(0.0, interval))
-
-        try:
-            self._cap.release()
-        except Exception:
-            pass
-        self._cap = None
+            
+            # Throttle to target FPS
+            now = time.time()
+            if now - last_emit_time >= frame_time:
+                self.frame_ready.emit(frame)
+                last_emit_time = now
+                frame_count += 1
+            
+            # Calculate FPS every second
+            elapsed = now - fps_start
+            if elapsed >= 1.0:
+                fps = frame_count / elapsed
+                self.stats_ready.emit({"fps": fps})
+                frame_count = 0
+                fps_start = now
+        
+        if self.cap:
+            self.cap.release()
+        self._running = False
 
 
 class AnalyzerWorker(QThread):
-    # GUI signals
-    overlay_ready = Signal(np.ndarray)   # frame with optional overlay
-    rep_event = Signal(dict)             # {"rep": n, "pred": "Correct/Incorrect", "prob": 0.xx, "reason": "..."}
+    """Background worker for pose analysis and GRU inference."""
+    
+    overlay_ready = Signal(np.ndarray)
+    rep_event = Signal(dict)
     status = Signal(str)
     error = Signal(str)
-
-    def __init__(self, exercise: str = "squat", speak_out: bool = False,
-                 yolo_weights: Optional[str] = None, parent: Optional[QObject] = None):
-        super().__init__(parent)
+    
+    def __init__(self, exercise: str, speak_out: bool = True, 
+                 yolo_weights=None, confidence_threshold: float = 0.5):
+        super().__init__()
+        
         self.exercise = exercise
-        self.speak_out = bool(speak_out)
-        self.yolo_weights = yolo_weights
+        self.speak_out = speak_out
         self._running = False
-        self._frame_queue: List[tuple] = []  # (t_s, frame_bgr)
-        self._last_t0 = None
-
-        # analysis state
-        self.fe = None
-        self.fsm = SquatFSM(SquatThresholds())
-        self.infer = None
-        self.frames_buf: List[dict] = []
-        self.rep_counter = 0
-
-    def push_frame(self, frame_bgr: np.ndarray):
-        if not self._running:
-            return
-        t_now = time.time()
-        if self._last_t0 is None:
-            self._last_t0 = t_now
-        t_s = t_now - self._last_t0
-        self._frame_queue.append((t_s, frame_bgr))
-
-    def stop(self):
-        self._running = False
-
-    def _init_models(self):
-        # Feature extractor
-        ycfg = YOLOConfig(weights_path=self.yolo_weights) if self.yolo_weights else None
-        self.fe = FeatureExtractor(yolo_cfg=ycfg)
-        # Inference
-        self.infer = LiveInference(get_models_dir(self.exercise), self.exercise)
-
-    def _close_models(self):
-        if self.fe:
-            try:
-                self.fe.close()
-            except Exception:
-                pass
-        self.fe = None
-
-    def run(self):
+        
+        # Frame queue
+        self.frame_queue = []
+        self.max_queue_size = 5
+        
+        # Initialize inference engine
         try:
-            self._running = True
-            self.status.emit("Initializing...")
-            self._init_models()
-            self.status.emit("Running")
+            self.inference_engine = GRUInference(
+                exercise=exercise,
+                confidence_threshold=confidence_threshold
+            )
+            self.status.emit("تم تحميل الموديل بنجاح")
         except Exception as e:
-            self.error.emit(f"Init failed: {e}")
-            return
-
+            self.error.emit(f"فشل تحميل الموديل: {str(e)}")
+            raise
+        
+        # Initialize pose runner
+        try:
+            self.pose_runner = PoseRunner(
+                static_image_mode=False,
+                model_complexity=1,
+                min_detection_confidence=0.5,
+                min_tracking_confidence=0.5
+            )
+        except Exception as e:
+            self.error.emit(f"فشل تهيئة MediaPipe: {str(e)}")
+            raise
+        
+        # Initialize YOLO (optional)
+        self.yolo_runner = None
+        if yolo_weights:
+            try:
+                self.yolo_runner = YoloRunner(weights=yolo_weights)
+                self.status.emit("تم تحميل YOLO")
+            except Exception as e:
+                print(f"[WARN] YOLO not loaded: {e}")
+        
+        # State tracking
+        self.rep_count = 0
+        self.current_features = {}
+        self.fsm_state = "IDLE"
+        self.rep_start_time = 0
+        self.last_rep_time = 0
+        self.min_rep_cooldown = 0.5  # seconds
+        
+        # Squat FSM thresholds
+        self.REST_KNEE = 165.0
+        self.START_KNEE = 155.0
+        self.BOTTOM_KNEE = 120.0
+        
+    def push_frame(self, frame: np.ndarray):
+        """Push a new frame for processing (called from GUI thread)."""
+        if len(self.frame_queue) < self.max_queue_size:
+            self.frame_queue.append(frame.copy())
+    
+    def stop(self):
+        """Stop the worker thread."""
+        self._running = False
+    
+    def run(self):
+        """Main worker loop."""
+        self._running = True
+        self.status.emit("جاهز للتحليل...")
+        
         while self._running:
-            if not self._frame_queue:
-                time.sleep(0.005)
+            if not self.frame_queue:
+                time.sleep(0.005)  # 5ms
                 continue
-
-            t_s, frame = self._frame_queue.pop(0)
-            # extract features
-            feats, lm = self.fe.compute_features(frame)
-
-            # compute knee mean for FSM
-            knee_mean = float(np.nanmean([feats["sq_knee_angle_L"], feats["sq_knee_angle_R"]]))
-            evt = self.fsm.step(t_s, knee_mean)
-
-            # keep minimal per-frame row in buffer
-            row = {"t_s": t_s}
-            row.update(feats)
-            row[SIG_COL] = knee_mean
-            self.frames_buf.append(row)
-
-            # overlay (optional minimal draw)
-            overlay = frame.copy()
-            # draw simple text HUD
-            cv2.putText(overlay, f"t={t_s:0.2f}s   knee={knee_mean:0.1f}",
-                        (12, 26), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (50,230,200), 2, cv2.LINE_AA)
-            self.overlay_ready.emit(overlay)
-
-            if evt is None:
+            
+            frame = self.frame_queue.pop(0)
+            
+            try:
+                overlay = self.process_frame(frame)
+                if overlay is not None:
+                    self.overlay_ready.emit(overlay)
+            except Exception as e:
+                self.error.emit(f"خطأ: {str(e)}")
+                print(f"[ERROR] Frame processing failed: {e}")
+        
+        # Cleanup
+        self.pose_runner.close()
+        self.status.emit("تم الإيقاف")
+    
+    def process_frame(self, frame: np.ndarray) -> Optional[np.ndarray]:
+        """Process a single frame."""
+        
+        # Extract pose landmarks
+        landmarks = self.pose_runner.process_bgr(frame)
+        if landmarks is None:
+            # No pose detected
+            return self.draw_no_pose(frame)
+        
+        # YOLO detection (optional)
+        detections = None
+        if self.yolo_runner:
+            try:
+                detections = self.yolo_runner.infer_bgr(frame)
+            except Exception as e:
+                print(f"[WARN] YOLO inference failed: {e}")
+        
+        # Build features
+        try:
+            features = build_features(landmarks, detections, self.exercise)
+            self.current_features = features.copy()
+        except Exception as e:
+            print(f"[ERROR] Feature building failed: {e}")
+            return frame
+        
+        # Push to inference buffer
+        self.inference_engine.push_frame_features(features)
+        
+        # Update FSM for rep counting
+        self.fsm_update(features)
+        
+        # Draw overlay
+        overlay = self.draw_overlay(frame, landmarks, features)
+        
+        return overlay
+    
+    def fsm_update(self, features: Dict[str, Any]):
+        """Finite state machine for rep counting."""
+        
+        # Get average knee angle
+        knee_L = features.get("sq_knee_angle_L", 180.0)
+        knee_R = features.get("sq_knee_angle_R", 180.0)
+        
+        # Handle None or NaN values
+        if knee_L is None or np.isnan(knee_L):
+            knee_L = 180.0
+        if knee_R is None or np.isnan(knee_R):
+            knee_R = 180.0
+        
+        knee_avg = (knee_L + knee_R) / 2.0
+        
+        current_time = time.time()
+        
+        if self.fsm_state == "IDLE":
+            # Check if starting to descend
+            if knee_avg <= self.START_KNEE:
+                self.fsm_state = "INREP"
+                self.rep_start_time = current_time
+                self.status.emit("🔽 نزول...")
+        
+        elif self.fsm_state == "INREP":
+            # Check if returning to standing
+            if knee_avg >= self.REST_KNEE:
+                # Check cooldown to avoid double counting
+                if current_time - self.last_rep_time >= self.min_rep_cooldown:
+                    self.fsm_state = "IDLE"
+                    self.last_rep_time = current_time
+                    self.handle_rep_completed()
+                else:
+                    # Too soon, ignore
+                    self.fsm_state = "IDLE"
+    
+    def handle_rep_completed(self):
+        """Called when a rep is detected."""
+        
+        # Get prediction from accumulated buffer
+        result = self.inference_engine.predict_from_buffer()
+        
+        if result is None:
+            # Not enough frames in buffer yet
+            self.status.emit("⚠️ بيانات غير كافية")
+            return
+        
+        label = result["label"]
+        prob = result["probability"]
+        
+        # Generate feedback
+        feedback = self.inference_engine.get_form_feedback(
+            self.current_features,
+            label
+        )
+        
+        # Increment counter
+        self.rep_count += 1
+        
+        # Emit event to GUI
+        self.rep_event.emit({
+            "rep": self.rep_count,
+            "pred": label,
+            "prob": prob,
+            "reason": feedback
+        })
+        
+        # Speak feedback if enabled
+        if self.speak_out and feedback:
+            try:
+                speak(feedback)
+            except Exception as e:
+                print(f"[WARN] TTS failed: {e}")
+        
+        # Update status
+        emoji = "✅" if label == "Correct" else "❌"
+        self.status.emit(f"{emoji} العدة {self.rep_count}: {label}")
+        
+        # Clear buffer for next rep
+        self.inference_engine.clear_buffer()
+    
+    def draw_overlay(self, frame: np.ndarray, landmarks: Dict, 
+                    features: Dict[str, Any]) -> np.ndarray:
+        """Draw pose overlay and info on frame."""
+        
+        overlay = frame.copy()
+        h, w = overlay.shape[:2]
+        
+        # Draw skeleton connections
+        connections = [
+            ("shoulder_L", "shoulder_R"),
+            ("shoulder_L", "elbow_L"),
+            ("elbow_L", "wrist_L"),
+            ("shoulder_R", "elbow_R"),
+            ("elbow_R", "wrist_R"),
+            ("shoulder_L", "hip_L"),
+            ("shoulder_R", "hip_R"),
+            ("hip_L", "hip_R"),
+            ("hip_L", "knee_L"),
+            ("knee_L", "ankle_L"),
+            ("hip_R", "knee_R"),
+            ("knee_R", "ankle_R"),
+        ]
+        
+        # Draw lines
+        for pt1, pt2 in connections:
+            if pt1 in landmarks and pt2 in landmarks:
+                x1, y1 = int(landmarks[pt1][0] * w), int(landmarks[pt1][1] * h)
+                x2, y2 = int(landmarks[pt2][0] * w), int(landmarks[pt2][1] * h)
+                cv2.line(overlay, (x1, y1), (x2, y2), (0, 255, 0), 3)
+        
+        # Draw keypoints
+        for name, pos in landmarks.items():
+            if name.endswith("_conf") or name.endswith("_mid"):
                 continue
-
-            if evt[0] == "START":
-                # could beep or show state
-                pass
-
-            elif evt[0] == "END":
-                start_t, end_t, bottom_angle = evt[1]
-                X = self.infer.build_sequence(self.frames_buf, start_t, end_t)
-                if X is None:
-                    continue
-                prob = self.infer.predict_prob(X)
-                pred = "Correct" if prob >= 0.5 else "Incorrect"
-
-                # quick rule reason for UI
-                reason = ""
-                th = self.fsm.th
-                # compute indicative aggregates:
-                seg = [r for r in self.frames_buf if start_t <= r["t_s"] <= end_t]
-                if seg:
-                    torso_max = float(np.nanmax([r["sq_torso_incline"] for r in seg]))
-                    pelvis_max = float(np.nanmax([r["sq_pelvis_drop"] for r in seg]))
-                    stance_mean = float(np.nanmean([r["sq_stance_ratio"] for r in seg]))
-                    bottom = float(np.nanmin([r[SIG_COL] for r in seg]))
-                    if not (bottom <= th.bottom_knee_deg):
-                        reason = "low_depth"
-                    elif torso_max > th.max_torso_incline:
-                        reason = "back_rounding"
-                    elif pelvis_max > th.max_pelvis_drop:
-                        reason = "asymmetry"
-                    elif stance_mean < th.min_stance_ratio or stance_mean > th.max_stance_ratio:
-                        reason = "stance_width"
-
-                self.rep_counter += 1
-                msg = {"rep": self.rep_counter, "pred": pred, "prob": float(prob), "reason": reason}
-                self.rep_event.emit(msg)
-                speak(f"Rep {self.rep_counter}: {pred}", enable=self.speak_out)
-
-                # memory hygiene: keep only last 2s of buffer after end
-                keep_after = end_t - 2.0
-                self.frames_buf = [r for r in self.frames_buf if r["t_s"] >= keep_after]
-
-        self._close_models()
-        self.status.emit("Stopped")
+            x, y = pos
+            px, py = int(x * w), int(y * h)
+            cv2.circle(overlay, (px, py), 6, (0, 255, 255), -1)
+            cv2.circle(overlay, (px, py), 8, (255, 0, 0), 2)
+        
+        # Draw info overlay
+        knee_L = features.get("sq_knee_angle_L", 0)
+        knee_R = features.get("sq_knee_angle_R", 0)
+        knee_avg = (knee_L + knee_R) / 2.0
+        
+        # Info background
+        cv2.rectangle(overlay, (5, 5), (300, 100), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (5, 5), (300, 100), (255, 255, 255), 2)
+        
+        # Text info
+        cv2.putText(overlay, f"Reps: {self.rep_count}", (15, 30),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+        
+        cv2.putText(overlay, f"Knee: {knee_avg:.0f} deg", (15, 60),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        
+        state_text = "Standing" if self.fsm_state == "IDLE" else "Squatting"
+        state_color = (100, 200, 255) if self.fsm_state == "IDLE" else (255, 150, 0)
+        cv2.putText(overlay, state_text, (15, 90),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, state_color, 2)
+        
+        return overlay
+    
+    def draw_no_pose(self, frame: np.ndarray) -> np.ndarray:
+        """Draw warning when no pose is detected."""
+        overlay = frame.copy()
+        h, w = overlay.shape[:2]
+        
+        text = "No pose detected"
+        text_ar = "لا يوجد شخص في الكادر"
+        
+        cv2.putText(overlay, text, (w//2 - 150, h//2),
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 2)
+        cv2.putText(overlay, text_ar, (w//2 - 150, h//2 + 40),
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 0, 255), 2)
+        
+        return overlay
