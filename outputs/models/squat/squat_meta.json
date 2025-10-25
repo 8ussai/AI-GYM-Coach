@@ -12,8 +12,8 @@
     "pose_confidence"
   ],
   "label_map": {
-    "Incorrect": 1,
-    "Correct": 0
+    "Incorrect": 0,
+    "Correct": 1
   },
   "seq_len": 96,
   "mean": [

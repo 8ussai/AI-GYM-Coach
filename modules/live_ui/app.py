@@ -187,7 +187,7 @@ class SquatScreen(QWidget):
         # Add threshold control
         self.threshold_spin = QSpinBox()
         self.threshold_spin.setRange(50, 95)
-        self.threshold_spin.setValue(50)
+        self.threshold_spin.setValue(35)
         self.threshold_spin.setSuffix("%")
         self.threshold_spin.setStyleSheet("padding: 8px; font-size: 14px;")
 
