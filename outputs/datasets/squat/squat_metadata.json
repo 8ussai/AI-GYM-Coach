@@ -1,0 +1,64 @@
+{
+  "config": {
+    "sequence_length": 40,
+    "noise_std": 0.02,
+    "augmentation_factor": 2,
+    "random_seed": 42,
+    "train_ratio": 0.8,
+    "val_ratio": 0.1,
+    "test_ratio": 0.1,
+    "feature_cols": [
+      "sq_knee_angle_L",
+      "sq_knee_angle_R",
+      "sq_torso_incline",
+      "sq_pelvis_drop",
+      "sq_stance_ratio",
+      "sq_elbow_angle_L",
+      "sq_elbow_angle_R"
+    ]
+  },
+  "label_mapping": {
+    "0": "Correct",
+    "1": "asymmetry",
+    "2": "back_rounding",
+    "3": "low_depth",
+    "4": "stance_width"
+  },
+  "feature_names": [
+    "sq_knee_angle_L",
+    "sq_knee_angle_R",
+    "sq_torso_incline",
+    "sq_pelvis_drop",
+    "sq_stance_ratio",
+    "sq_elbow_angle_L",
+    "sq_elbow_angle_R"
+  ],
+  "normalization_params": {
+    "mean": [
+      78.03270493230956,
+      77.73633889531165,
+      4.197813696548457,
+      0.05419389458546521,
+      0.6537302145134664,
+      25.029437724126065,
+      23.11489567105319
+    ],
+    "std": [
+      68.24905907863803,
+      68.02693598284347,
+      4.6791033183842545,
+      0.08124637290851004,
+      0.6278448513464785,
+      29.66505847936941,
+      24.336911625603435
+    ]
+  },
+  "dataset_stats": {
+    "train_size": 1009,
+    "val_size": 56,
+    "test_size": 57,
+    "num_features": 7,
+    "sequence_length": 40,
+    "num_classes": 5
+  }
+}

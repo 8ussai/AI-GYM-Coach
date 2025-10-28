@@ -63,26 +63,21 @@ class VideoWorker(QThread):
         while self._running:
             ret, frame = self.cap.read()
             if not ret:
-                # End of video or camera disconnected
                 if isinstance(self.source, str):
-                    # Video file ended, could loop or stop
                     break
                 else:
                     self.error.emit("فقدان الاتصال بالكاميرا")
                     break
             
-            # Flip if needed
             if self.flip:
                 frame = cv2.flip(frame, 1)
             
-            # Throttle to target FPS
             now = time.time()
             if now - last_emit_time >= frame_time:
                 self.frame_ready.emit(frame)
                 last_emit_time = now
                 frame_count += 1
             
-            # Calculate FPS every second
             elapsed = now - fps_start
             if elapsed >= 1.0:
                 fps = frame_count / elapsed
@@ -115,7 +110,7 @@ class AnalyzerWorker(QThread):
         self.frame_queue = []
         self.max_queue_size = 5
         
-        # Initialize inference engine
+        # ✅ Initialize inference engine
         try:
             self.inference_engine = GRUInference(
                 exercise=exercise,
@@ -147,7 +142,7 @@ class AnalyzerWorker(QThread):
             except Exception as e:
                 print(f"[WARN] YOLO not loaded: {e}")
         
-        # State tracking
+        # ✅ State tracking with improved FSM
         self.rep_count = 0
         self.current_features = {}
         self.fsm_state = "IDLE"
@@ -155,10 +150,14 @@ class AnalyzerWorker(QThread):
         self.last_rep_time = 0
         self.min_rep_cooldown = 0.5  # seconds
         
-        # Squat FSM thresholds
-        self.REST_KNEE = 165.0
-        self.START_KNEE = 155.0
-        self.BOTTOM_KNEE = 120.0
+        # ✅ Track min knee angle during rep
+        self.min_knee_in_rep = 180.0
+        
+        # ✅ Squat FSM thresholds (more realistic)
+        self.REST_KNEE = 160.0      # Standing threshold
+        self.START_KNEE = 150.0     # Start descending
+        self.BOTTOM_KNEE = 110.0    # Minimum depth for valid rep
+        self.RISE_THRESHOLD = 20.0  # Knee angle must rise by this much to count as ascending
         
     def push_frame(self, frame: np.ndarray):
         """Push a new frame for processing (called from GUI thread)."""
@@ -176,7 +175,7 @@ class AnalyzerWorker(QThread):
         
         while self._running:
             if not self.frame_queue:
-                time.sleep(0.005)  # 5ms
+                time.sleep(0.005)
                 continue
             
             frame = self.frame_queue.pop(0)
@@ -199,7 +198,6 @@ class AnalyzerWorker(QThread):
         # Extract pose landmarks
         landmarks = self.pose_runner.process_bgr(frame)
         if landmarks is None:
-            # No pose detected
             return self.draw_no_pose(frame)
         
         # YOLO detection (optional)
@@ -221,79 +219,107 @@ class AnalyzerWorker(QThread):
         # Push to inference buffer
         self.inference_engine.push_frame_features(features)
         
-        # Update FSM for rep counting
-        self.fsm_update(features)
+        # ✅ Update improved FSM
+        self.fsm_update_v2(features)
         
         # Draw overlay
         overlay = self.draw_overlay(frame, landmarks, features)
         
         return overlay
     
-    def fsm_update(self, features: Dict[str, Any]):
-        """Finite state machine for rep counting."""
+    def fsm_update_v2(self, features: Dict[str, Any]):
+        """
+        ✅ Improved FSM with proper depth tracking and rise detection.
+        """
         
         # Get average knee angle
         knee_L = features.get("sq_knee_angle_L", 180.0)
         knee_R = features.get("sq_knee_angle_R", 180.0)
         
-        # Handle None or NaN values
         if knee_L is None or np.isnan(knee_L):
             knee_L = 180.0
         if knee_R is None or np.isnan(knee_R):
             knee_R = 180.0
         
         knee_avg = (knee_L + knee_R) / 2.0
-        
         current_time = time.time()
         
+        # ============ STATE MACHINE ============
+        
         if self.fsm_state == "IDLE":
-            # Check if starting to descend
+            # Waiting for descent
             if knee_avg <= self.START_KNEE:
-                self.fsm_state = "INREP"
+                self.fsm_state = "DESCENDING"
                 self.rep_start_time = current_time
+                self.min_knee_in_rep = knee_avg
                 self.status.emit("🔽 نزول...")
         
-        elif self.fsm_state == "INREP":
-            # Check if returning to standing
+        elif self.fsm_state == "DESCENDING":
+            # Track minimum knee angle
+            if knee_avg < self.min_knee_in_rep:
+                self.min_knee_in_rep = knee_avg
+            
+            # Check if starting to rise
+            rise_amount = knee_avg - self.min_knee_in_rep
+            
+            if rise_amount >= self.RISE_THRESHOLD:
+                # Started ascending
+                self.fsm_state = "ASCENDING"
+                self.status.emit("🔼 صعود...")
+        
+        elif self.fsm_state == "ASCENDING":
+            # Continue tracking in case of oscillation
+            if knee_avg < self.min_knee_in_rep:
+                self.min_knee_in_rep = knee_avg
+            
+            # Check if returned to standing
             if knee_avg >= self.REST_KNEE:
-                # Check cooldown to avoid double counting
+                # Rep completed
                 if current_time - self.last_rep_time >= self.min_rep_cooldown:
-                    self.fsm_state = "IDLE"
                     self.last_rep_time = current_time
                     self.handle_rep_completed()
-                else:
-                    # Too soon, ignore
-                    self.fsm_state = "IDLE"
+                
+                # Reset for next rep
+                self.fsm_state = "IDLE"
+                self.min_knee_in_rep = 180.0
     
     def handle_rep_completed(self):
-        """Called when a rep is detected."""
+        """✅ Called when a rep is detected - updated for multi-class."""
         
         # Get prediction from accumulated buffer
         result = self.inference_engine.predict_from_buffer()
         
         if result is None:
-            # Not enough frames in buffer yet
             self.status.emit("⚠️ بيانات غير كافية")
             return
         
         label = result["label"]
         prob = result["probability"]
         
-        # Generate feedback
-        feedback = self.inference_engine.get_form_feedback(
-            self.current_features,
-            label
-        )
+        # ✅ Check depth requirement
+        depth_ok = self.min_knee_in_rep <= self.BOTTOM_KNEE
+        
+        if not depth_ok:
+            # Override prediction if depth not met
+            label = "low_depth"
+            feedback = "انزل أكثر - العمق غير كافي"
+        else:
+            # Generate feedback from inference
+            feedback = self.inference_engine.get_form_feedback(
+                self.current_features,
+                label
+            )
         
         # Increment counter
         self.rep_count += 1
         
-        # Emit event to GUI
+        # ✅ Emit event to GUI
         self.rep_event.emit({
             "rep": self.rep_count,
             "pred": label,
             "prob": prob,
-            "reason": feedback
+            "reason": feedback,
+            "depth": self.min_knee_in_rep  # Extra info
         })
         
         # Speak feedback if enabled
@@ -303,8 +329,9 @@ class AnalyzerWorker(QThread):
             except Exception as e:
                 print(f"[WARN] TTS failed: {e}")
         
-        # Update status
-        emoji = "✅" if label == "Correct" else "❌"
+        # ✅ Update status
+        is_correct = label.lower() in ["correct", "صحيح", "جيد"]
+        emoji = "✅" if is_correct else "❌"
         self.status.emit(f"{emoji} العدة {self.rep_count}: {label}")
         
         # Clear buffer for next rep
@@ -317,23 +344,17 @@ class AnalyzerWorker(QThread):
         overlay = frame.copy()
         h, w = overlay.shape[:2]
         
-        # Draw skeleton connections
+        # ✅ Draw skeleton
         connections = [
             ("shoulder_L", "shoulder_R"),
-            ("shoulder_L", "elbow_L"),
-            ("elbow_L", "wrist_L"),
-            ("shoulder_R", "elbow_R"),
-            ("elbow_R", "wrist_R"),
-            ("shoulder_L", "hip_L"),
-            ("shoulder_R", "hip_R"),
+            ("shoulder_L", "elbow_L"), ("elbow_L", "wrist_L"),
+            ("shoulder_R", "elbow_R"), ("elbow_R", "wrist_R"),
+            ("shoulder_L", "hip_L"), ("shoulder_R", "hip_R"),
             ("hip_L", "hip_R"),
-            ("hip_L", "knee_L"),
-            ("knee_L", "ankle_L"),
-            ("hip_R", "knee_R"),
-            ("knee_R", "ankle_R"),
+            ("hip_L", "knee_L"), ("knee_L", "ankle_L"),
+            ("hip_R", "knee_R"), ("knee_R", "ankle_R"),
         ]
         
-        # Draw lines
         for pt1, pt2 in connections:
             if pt1 in landmarks and pt2 in landmarks:
                 x1, y1 = int(landmarks[pt1][0] * w), int(landmarks[pt1][1] * h)
@@ -349,25 +370,41 @@ class AnalyzerWorker(QThread):
             cv2.circle(overlay, (px, py), 6, (0, 255, 255), -1)
             cv2.circle(overlay, (px, py), 8, (255, 0, 0), 2)
         
-        # Draw info overlay
+        # ✅ Draw info panel
         knee_L = features.get("sq_knee_angle_L", 0)
         knee_R = features.get("sq_knee_angle_R", 0)
         knee_avg = (knee_L + knee_R) / 2.0
         
-        # Info background
-        cv2.rectangle(overlay, (5, 5), (300, 100), (0, 0, 0), -1)
-        cv2.rectangle(overlay, (5, 5), (300, 100), (255, 255, 255), 2)
+        cv2.rectangle(overlay, (5, 5), (320, 120), (0, 0, 0), -1)
+        cv2.rectangle(overlay, (5, 5), (320, 120), (255, 255, 255), 2)
         
-        # Text info
         cv2.putText(overlay, f"Reps: {self.rep_count}", (15, 30),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
         
         cv2.putText(overlay, f"Knee: {knee_avg:.0f} deg", (15, 60),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
         
-        state_text = "Standing" if self.fsm_state == "IDLE" else "Squatting"
-        state_color = (100, 200, 255) if self.fsm_state == "IDLE" else (255, 150, 0)
-        cv2.putText(overlay, state_text, (15, 90),
+        # ✅ Show min knee if in rep
+        if self.fsm_state != "IDLE":
+            cv2.putText(overlay, f"Min: {self.min_knee_in_rep:.0f} deg", (15, 90),
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.6, (100, 200, 255), 2)
+        
+        # State indicator
+        state_texts = {
+            "IDLE": "Standing",
+            "DESCENDING": "Descending",
+            "ASCENDING": "Ascending"
+        }
+        state_colors = {
+            "IDLE": (100, 200, 255),
+            "DESCENDING": (255, 150, 0),
+            "ASCENDING": (0, 255, 150)
+        }
+        
+        state_text = state_texts.get(self.fsm_state, "Unknown")
+        state_color = state_colors.get(self.fsm_state, (255, 255, 255))
+        
+        cv2.putText(overlay, state_text, (170, 30),
                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, state_color, 2)
         
         return overlay

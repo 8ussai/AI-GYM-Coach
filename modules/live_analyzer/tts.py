@@ -45,9 +45,9 @@ class TTSEngine:
             self.worker_thread = threading.Thread(target=self._worker, daemon=True)
             self.worker_thread.start()
             
-            print("[TTS] Initialized successfully")
+            print("[TTS] ✅ Initialized successfully")
         except Exception as e:
-            print(f"[TTS] Failed to initialize: {e}")
+            print(f"[TTS] ❌ Failed to initialize: {e}")
             self.enabled = False
     
     def _worker(self):
