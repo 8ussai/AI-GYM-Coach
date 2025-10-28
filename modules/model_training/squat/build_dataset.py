@@ -10,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler, LabelEncoder
 
 
-SQUAT_CONFIG = {
+CONFIG = {
     'sequence_length': 40,          
     'noise_std': 0.02,              
     'augmentation_factor': 2,       
@@ -26,9 +26,9 @@ SQUAT_CONFIG = {
     ]
 }
 
-np.random.seed(SQUAT_CONFIG['random_seed'])
+np.random.seed(CONFIG['random_seed'])
 
-def prepare_squat_data_after_loading(frames_path: str, reps_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def loading_and_preparing_data(frames_path: str, reps_path: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
     frames_df = pd.read_csv(frames_path)
     reps_df = pd.read_csv(reps_path)
 
@@ -54,13 +54,13 @@ def extract_sequences(frames_df: pd.DataFrame, reps_df: pd.DataFrame) -> List[Di
         
         rep_frames = frames_df[(frames_df['video_name'] == video) & (frames_df['rep_id'] == rep_id)].sort_values('frame_idx')
         
-        features = rep_frames[SQUAT_CONFIG['feature_cols']].values
+        features = rep_frames[CONFIG['feature_cols']].values
         
-        if len(features) < SQUAT_CONFIG['sequence_length']:
-            padding = np.zeros((SQUAT_CONFIG['sequence_length'] - len(features), 7))
+        if len(features) < CONFIG['sequence_length']:
+            padding = np.zeros((CONFIG['sequence_length'] - len(features), 7))
             features = np.vstack([features, padding])
         else:
-            features = features[:SQUAT_CONFIG['sequence_length']]
+            features = features[:CONFIG['sequence_length']]
         
         sequences.append({'video_name': video, 'rep_id': rep_id, 'sequence': features, 'label': label, 'original_length': len(rep_frames)})
     
@@ -72,10 +72,10 @@ def add_noise_augmentation(sequences: List[Dict]) -> List[Dict]:
     for seq_dict in sequences:
         augmented.append(seq_dict.copy())
         
-        for aug_idx in range(SQUAT_CONFIG['augmentation_factor'] - 1):
+        for aug_idx in range(CONFIG['augmentation_factor'] - 1):
             noisy_seq = seq_dict.copy()
             
-            noise = np.random.normal(0, SQUAT_CONFIG['noise_std'], seq_dict['sequence'].shape)
+            noise = np.random.normal(0, CONFIG['noise_std'], seq_dict['sequence'].shape)
             
             noisy_seq['sequence'] = seq_dict['sequence'] + noise
             noisy_seq['is_augmented'] = True
@@ -88,9 +88,9 @@ def add_noise_augmentation(sequences: List[Dict]) -> List[Dict]:
 def prepare_dataset(sequences: List[Dict]) -> Dict:
     original_seqs = [s for s in sequences if not s.get('is_augmented', False)]
     
-    train_seqs, test_seqs = train_test_split(original_seqs, test_size=SQUAT_CONFIG['val_ratio'] + SQUAT_CONFIG['test_ratio'], random_state=SQUAT_CONFIG['random_seed'], stratify=[s['label'] for s in original_seqs])
+    train_seqs, test_seqs = train_test_split(original_seqs, test_size=CONFIG['val_ratio'] + CONFIG['test_ratio'], random_state=CONFIG['random_seed'], stratify=[s['label'] for s in original_seqs])
     
-    val_seqs, test_seqs = train_test_split(test_seqs, test_size=SQUAT_CONFIG['test_ratio'] / (SQUAT_CONFIG['val_ratio'] + SQUAT_CONFIG['test_ratio']), random_state=SQUAT_CONFIG['random_seed'], stratify=[s['label'] for s in test_seqs])
+    val_seqs, test_seqs = train_test_split(test_seqs, test_size=CONFIG['test_ratio'] / (CONFIG['val_ratio'] + CONFIG['test_ratio']), random_state=CONFIG['random_seed'], stratify=[s['label'] for s in test_seqs])
     
     augmented_seqs = [s for s in sequences if s.get('is_augmented', False)]
 
@@ -140,12 +140,12 @@ def save_dataset(data: Dict, output_dir: str):
     np.save(f'{output_dir}/y_test.npy', data['y_test'])
     
     metadata = {
-        'config': SQUAT_CONFIG,
+        'config': CONFIG,
         'label_mapping': {
             int(i): label 
             for i, label in enumerate(data['label_encoder'].classes_)
         },
-        'feature_names': SQUAT_CONFIG['feature_cols'],
+        'feature_names': CONFIG['feature_cols'],
         'normalization_params': {
             'mean': data['scaler'].mean_.tolist(),
             'std': data['scaler'].scale_.tolist()
@@ -166,8 +166,7 @@ def save_dataset(data: Dict, output_dir: str):
     return metadata
 
 def main():
-
-    frames_df, reps_df = prepare_squat_data_after_loading(get_cleaned_frames("squat"), get_cleaned_reps("squat"))
+    frames_df, reps_df = loading_and_preparing_data(get_cleaned_frames("squat"), get_cleaned_reps("squat"))
     sequences = extract_sequences(frames_df, reps_df)
     augmented_sequences = add_noise_augmentation(sequences)
     dataset = prepare_dataset(augmented_sequences)
