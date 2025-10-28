@@ -3,6 +3,14 @@
     "sequence_length": 40,
     "noise_std": 0.02,
     "augmentation_factor": 2,
+    "minority_augmentation_factor": 10,
+    "minority_classes": [
+      "stance_width",
+      "back_rounding"
+    ],
+    "no_augmentation_classes": [
+      "low_depth"
+    ],
     "random_seed": 42,
     "train_ratio": 0.8,
     "val_ratio": 0.1,
@@ -15,7 +23,27 @@
       "sq_stance_ratio",
       "sq_elbow_angle_L",
       "sq_elbow_angle_R"
-    ]
+    ],
+    "augmentation_config": {
+      "noise_std": 0.02,
+      "time_warp_range": [
+        0.85,
+        1.15
+      ],
+      "magnitude_scale_range": [
+        0.88,
+        1.12
+      ],
+      "angle_shift_range": [
+        -5,
+        5
+      ],
+      "smote_alpha_range": [
+        0.2,
+        0.8
+      ],
+      "smote_probability": 0.4
+    }
   },
   "label_mapping": {
     "0": "Correct",
@@ -35,30 +63,37 @@
   ],
   "normalization_params": {
     "mean": [
-      78.03270493230956,
-      77.73633889531165,
-      4.197813696548457,
-      0.05419389458546521,
-      0.6537302145134664,
-      25.029437724126065,
-      23.11489567105319
+      83.02283925629905,
+      82.40776552054729,
+      5.12714753067964,
+      0.07789184596342576,
+      0.75621826963048,
+      27.52241430992871,
+      26.001090385767654
     ],
     "std": [
-      68.24905907863803,
-      68.02693598284347,
-      4.6791033183842545,
-      0.08124637290851004,
-      0.6278448513464785,
-      29.66505847936941,
-      24.336911625603435
+      65.19998390888627,
+      64.7960701216064,
+      5.346065169752949,
+      0.9075226670984322,
+      1.1151873507048515,
+      29.12811907768865,
+      25.50316747234444
     ]
   },
   "dataset_stats": {
-    "train_size": 1009,
+    "train_size": 917,
     "val_size": 56,
     "test_size": 57,
     "num_features": 7,
     "sequence_length": 40,
-    "num_classes": 5
+    "num_classes": 5,
+    "class_distribution": {
+      "Correct": 365,
+      "asymmetry": 106,
+      "back_rounding": 69,
+      "low_depth": 220,
+      "stance_width": 157
+    }
   }
 }
