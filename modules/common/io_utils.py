@@ -1,12 +1,12 @@
-from pathlib import Path
 import pandas as pd
 import json
+
+from pathlib import Path
 
 def read_csv(path: Path, **kwargs) -> pd.DataFrame:
     return pd.read_csv(path, **kwargs)
 
 def write_csv(df: pd.DataFrame, path: Path, mode: str = "w", header: bool | None = None):
-    """يدعم append بأمان مع إنشاء المجلدات."""
     path.parent.mkdir(parents=True, exist_ok=True)
     if header is None:
         header = (not path.exists()) or (mode == "w")

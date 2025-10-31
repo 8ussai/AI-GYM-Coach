@@ -1,18 +1,10 @@
-#!/usr/bin/env python3
-# MediaPipe Pose runner with a simple, consistent API.
-# Returns a dict of landmarks in normalized [0..1] coordinates and optional *_conf keys.
+import cv2
+import mediapipe as mp
 
 from typing import Dict, Tuple, Optional
-import cv2
-
-try:
-    import mediapipe as mp
-except Exception as e:
-    raise RuntimeError("mediapipe is required. Install via: pip install mediapipe") from e
 
 Point = Tuple[float, float]
 
-# Mapping from MediaPipe indices to our canonical names
 _INDEX_TO_NAME = {
     11: "shoulder_L", 12: "shoulder_R",
     23: "hip_L",      24: "hip_R",
@@ -48,7 +40,6 @@ class PoseRunner:
         self.close()
 
     def process_bgr(self, frame_bgr) -> Optional[Dict[str, float]]:
-        """Process a BGR frame (cv2) and return dict of landmarks {name: (x,y), name_conf: float} or None."""
         frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
         res = self._pose.process(frame_rgb)
         if not res or not res.pose_landmarks:
@@ -58,13 +49,11 @@ class PoseRunner:
         out: Dict[str, float] = {}
         lm = res.pose_landmarks.landmark
 
-        # Fill requested keypoints
         for idx, name in _INDEX_TO_NAME.items():
             p = lm[idx]
-            out[name] = (float(p.x), float(p.y))  # normalized already
+            out[name] = (float(p.x), float(p.y))  
             out[f"{name}_conf"] = float(p.visibility)
 
-        # Midpoints useful for torso tilt
         if "shoulder_L" in out and "shoulder_R" in out:
             out["shoulder_mid"] = (
                 (out["shoulder_L"][0] + out["shoulder_R"][0]) / 2.0,

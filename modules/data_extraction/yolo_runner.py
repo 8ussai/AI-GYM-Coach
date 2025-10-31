@@ -1,15 +1,10 @@
-#!/usr/bin/env python3
-# YOLO runner using ultralytics. Returns list of detections with cls/conf/bbox.
+from modules.common.config import YOLO_WEIGHTS, YOLO_CONF_THRESH, YOLO_IOU_THRESH
+
+import numpy as np
 
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-
-try:
-    from ultralytics import YOLO
-except Exception as e:
-    raise RuntimeError("ultralytics is required. Install via: pip install ultralytics") from e
-
-from modules.common.config import YOLO_WEIGHTS, YOLO_CONF_THRESH, YOLO_IOU_THRESH
+from ultralytics import YOLO
 
 class YoloRunner:
     def __init__(self, weights: Optional[Path] = None, conf: float = None, iou: float = None, device: str = ""):
@@ -22,8 +17,6 @@ class YoloRunner:
         self.model = YOLO(str(self.weights))
 
     def infer_bgr(self, frame_bgr) -> Dict[str, Any]:
-        """Run YOLO on a BGR frame and return dict with 'yolo': [{'cls':int,'conf':float,'bbox':(x,y,w,h)}]."""
-        # ultralytics can take numpy arrays directly
         res = self.model.predict(
             source=frame_bgr, conf=self.conf, iou=self.iou, device=self.device, verbose=False
         )
@@ -36,8 +29,6 @@ class YoloRunner:
             return {"yolo": detections}
 
         boxes = r0.boxes
-        # xywh in pixels or normalized? xyxy by default; convert to xywh
-        import numpy as np
         xyxy = boxes.xyxy.cpu().numpy() if hasattr(boxes.xyxy, "cpu") else boxes.xyxy
         confs = boxes.conf.cpu().numpy() if hasattr(boxes.conf, "cpu") else boxes.conf
         clss  = boxes.cls.cpu().numpy()  if hasattr(boxes.cls, "cpu")  else boxes.cls
